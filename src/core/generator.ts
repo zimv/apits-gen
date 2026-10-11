@@ -86,9 +86,14 @@ function isDegradedRequestType(typeCode: string): boolean {
   if (/&\s*(string|unknown)\b/.test(body)) return true;
   return false;
 }
+// Default type of the per-request `extra` argument; matches the config
+// accepted by the scaffolded axios client.
+const DEFAULT_CLIENT_CONFIG_TYPE = 'AxiosRequestConfig';
+
 // Default request function body template.
 function defaultRequestFunctionTemplate(props: RequestFunctionTemplateProps, config?: SyntheticalConfig): string {
   const {baseURL, requestFunctionName, requestDataTypeName, responseDataTypeName, extendedInterfaceInfo} = props;
+  const clientConfigType = config?.clientConfigType || DEFAULT_CLIENT_CONFIG_TYPE;
   const {req_params, req_query, req_body_type, req_body_multipart, req_body_form} = extendedInterfaceInfo;
   const hasData = req_params.length || req_query.length || (Array.isArray(req_body_form) && req_body_form.length);
   const method = extendedInterfaceInfo.method.toLowerCase();
@@ -119,7 +124,7 @@ function defaultRequestFunctionTemplate(props: RequestFunctionTemplateProps, con
 
   return `export const ${requestFunctionName} = (data${
     hasData ? '' : '?'
-  }: ${requestDataTypeName}${`,extra?:Record<string,any>`}) => {
+  }: ${requestDataTypeName}${`,extra?:${clientConfigType}`}) => {
     ${formBuilder}
     return request.${method}<${requestDataTypeName},${responseDataTypeName}>(${handlePathParam(
       extendedInterfaceInfo.path
@@ -265,10 +270,20 @@ export class Generator {
         const resolvedPath = outputFilePath.replace(/\.js(x)?$/, '.ts$1');
 
         const clientImportTemplate = syntheticalConfig.clientImportTemplate || defaultClientImportTemplate;
+        const clientConfigType = syntheticalConfig.clientConfigType || DEFAULT_CLIENT_CONFIG_TYPE;
+        // With the default config type the generated functions reference
+        // AxiosRequestConfig, so its type-only import must accompany the
+        // client import. Custom config types must be imported by the
+        // project's own clientImportTemplate.
+        const clientConfigImport =
+          clientConfigType === DEFAULT_CLIENT_CONFIG_TYPE
+            ? "import type { AxiosRequestConfig } from 'axios';"
+            : '';
 
         const rawOutputContent = dedent`
           ${topNotesContent()}
           ${clientImportTemplate(config)}
+          ${clientConfigImport}
 
           ${content.join('\n\n').trim()}
         `;

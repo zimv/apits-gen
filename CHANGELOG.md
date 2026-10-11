@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.0.1] - 2026-10-12
+
+> Type-safety fix: the per-request `extra` argument no longer degrades to `Record<string, any>`.
+
+### Features
+
+- **Typed `extra` argument**: every generated request function now types its second argument as `AxiosRequestConfig` by default (with a matching `import type { AxiosRequestConfig } from 'axios'` in the generated file), instead of `Record<string, any>`.
+- **`clientConfigType` config option**: projects using a custom client via `clientImportTemplate` can declare their own config type, e.g. `clientConfigType: 'RequestConfig'`; the type must be imported by the custom `clientImportTemplate`, and no axios import is emitted in that case.
+
+---
+
 ## [0.0.8] - 2026-09-22
 
 > Architecture cleanup: eliminated the Swagger 2.0 / YApi intermediate layers, removed dead code and dependencies, unified logging, improved type safety.

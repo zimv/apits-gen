@@ -234,6 +234,24 @@ export interface ApiConfig {
    */
   clientImportTemplate?: ClientImportTemplate;
   /**
+   * Type used for the `extra` argument of every generated request
+   * function — the object spread into the underlying client call as
+   * per-request overrides (headers, signal, `responseType`, ...).
+   *
+   * Defaults to `AxiosRequestConfig`, in which case each generated file
+   * also imports that type from `axios`. When using a custom client via
+   * `clientImportTemplate`, set this to that client's config type and
+   * make sure `clientImportTemplate` imports it, e.g.:
+   *
+   * ```ts
+   * clientImportTemplate: () => "import {request, type RequestConfig} from '../fetch'",
+   * clientConfigType: 'RequestConfig',
+   * ```
+   *
+   * @default 'AxiosRequestConfig'
+   */
+  clientConfigType?: string;
+  /**
    * Whether to scaffold the default axios request client into
    * `<output>/request.ts` (skipped when that file already exists).
    *

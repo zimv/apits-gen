@@ -379,6 +379,55 @@ async function main(): Promise<void> {
 
   await fs.rm(tmpDirP3, {recursive: true, force: true});
   console.log('\n  ✓ writeRequestClient scaffold tests passed (P-3)\n');
+
+  // ---------------------------------------------------------------------------
+  // P-4: The per-request `extra` argument must not degrade to
+  // `Record<string, any>`. It defaults to AxiosRequestConfig (with a
+  // matching type-only import), and follows `clientConfigType` for
+  // custom clients (whose own import template must bring the type).
+  // ---------------------------------------------------------------------------
+
+  // Default client: axios type import + AxiosRequestConfig extra.
+  const tmpDirP4a = await fs.mkdtemp(path.join(os.tmpdir(), 'apits-p4a-'));
+  const specPathP4a = path.join(tmpDirP4a, 'spec.json');
+  await fs.writeFile(specPathP4a, JSON.stringify(multipartSpec));
+  const outDirP4a = path.join(tmpDirP4a, 'out');
+  const generatorP4a = new Generator({
+    input: specPathP4a,
+    output: outDirP4a,
+    name: 'p4test',
+    client: false,
+  });
+  const outP4a = await generatorP4a.generate();
+  await generatorP4a.write(outP4a);
+  const apiP4a = await fs.readFile(path.join(outDirP4a, 'p4test.ts'), 'utf-8');
+  assert.match(apiP4a, /import type \{AxiosRequestConfig\} from 'axios'/, 'P-4: default config type imports AxiosRequestConfig');
+  assert.match(apiP4a, /extra\?: AxiosRequestConfig/, 'P-4: generated functions type extra as AxiosRequestConfig');
+  assert.doesNotMatch(apiP4a, /Record<string,\s*any>/, 'P-4: must not emit Record<string, any>');
+  await fs.rm(tmpDirP4a, {recursive: true, force: true});
+
+  // Custom client: project-supplied config type, no axios import added.
+  const tmpDirP4b = await fs.mkdtemp(path.join(os.tmpdir(), 'apits-p4b-'));
+  const specPathP4b = path.join(tmpDirP4b, 'spec.json');
+  await fs.writeFile(specPathP4b, JSON.stringify(multipartSpec));
+  const outDirP4b = path.join(tmpDirP4b, 'out');
+  const generatorP4b = new Generator({
+    input: specPathP4b,
+    output: outDirP4b,
+    name: 'p4custom',
+    client: false,
+    clientImportTemplate: () => "import {request, type RequestConfig} from '../fetch'",
+    clientConfigType: 'RequestConfig',
+  });
+  const outP4b = await generatorP4b.generate();
+  await generatorP4b.write(outP4b);
+  const apiP4b = await fs.readFile(path.join(outDirP4b, 'p4custom.ts'), 'utf-8');
+  assert.match(apiP4b, /import \{request, type RequestConfig\} from '\.\.\/fetch'/, 'P-4: custom client import preserved');
+  assert.match(apiP4b, /extra\?: RequestConfig/, 'P-4: custom clientConfigType applied to extra');
+  assert.doesNotMatch(apiP4b, /AxiosRequestConfig/, 'P-4: no axios config type with a custom client config type');
+  await fs.rm(tmpDirP4b, {recursive: true, force: true});
+
+  console.log('\n  ✓ extra-arg typing tests passed (P-4)\n');
 }
 
 main().catch(err => {
