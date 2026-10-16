@@ -288,7 +288,7 @@ export class Generator {
           ${content.join('\n\n').trim()}
         `;
 
-        const outputContent = await formatContent(dedent`${rawOutputContent}`);
+        const outputContent = await formatContent(dedent`${rawOutputContent}`, resolvedPath);
         await fs.outputFile(resolvedPath, outputContent);
       })
     );

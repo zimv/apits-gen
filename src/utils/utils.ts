@@ -1,7 +1,7 @@
 import {castArray, forOwn, isArray, isEmpty, isObject} from './vtilsLite';
 import {compile} from 'json-schema-to-typescript';
 import type {Defined} from './vtilsLite';
-import {format as prettierFormat, type Options as PrettierOptions} from 'prettier';
+import {format as prettierFormat, resolveConfig, type Options as PrettierOptions} from 'prettier';
 import {
   Interface,
   PropDefinition,
@@ -181,7 +181,8 @@ function propDefinitionsToJsonSchema(propDefinitions: PropDefinitions): JSONSche
 }
 
 /**
- * Get the prettier configuration used to format generated code.
+ * Get the fallback prettier configuration used when the consumer project has
+ * no prettier config of its own.
  * @returns prettier options
  */
 function getPrettier(): PrettierOptions {
@@ -497,17 +498,29 @@ export function getResponseDataJsonSchema(interfaceInfo: Interface): JSONSchema4
 /**
  * Format generated code with prettier.
  *
+ * When the output file path is known, the consumer project's own prettier
+ * config is resolved from it (resolveConfig walks up from the file location),
+ * so generated code lands clean under the consumer's `prettier --check`. The
+ * bundled defaults only apply when no consumer config exists. `filepath` is
+ * always set so prettier infers the parser from the extension and applies any
+ * matching `overrides` from the consumer config.
+ *
  * @param content code to format
+ * @param filePath output file path used to resolve the consumer config
  * @returns formatted code
  * @see https://prettier.io/docs/en/options.html
  */
-export async function formatContent(content: string): Promise<string> {
-  // Read the prettier config defined by this generator.
-  const config = getPrettier();
-  // prettier 3 made `format` asynchronous; callers must await the result.
-  const prettyOutputContent = await prettierFormat(content, config);
-
-  return prettyOutputContent;
+export async function formatContent(content: string, filePath?: string): Promise<string> {
+  const defaults = getPrettier();
+  if (!filePath) {
+    // prettier 3 made `format` asynchronous; callers must await the result.
+    return prettierFormat(content, defaults);
+  }
+  const consumerConfig = (await resolveConfig(filePath)) ?? {};
+  const config: PrettierOptions = {...defaults, ...consumerConfig, filepath: filePath};
+  // Explicit parser would win over `filepath` inference; drop it.
+  delete config.parser;
+  return prettierFormat(content, config);
 }
 
 /**

@@ -59,5 +59,5 @@ export default async function writeRequestClient(config: Config) {
   };
 `;
 
-  await fs.outputFile(rawRequestFunctionFilePath, await formatContent(dedent`${content}`));
+  await fs.outputFile(rawRequestFunctionFilePath, await formatContent(dedent`${content}`, rawRequestFunctionFilePath));
 }
