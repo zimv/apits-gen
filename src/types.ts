@@ -1,7 +1,7 @@
-export * from 'json-schema';
-import {JSONSchema4} from 'json-schema';
-import {OpenAPIV3} from 'openapi-types';
-import {ParsedPath} from 'path';
+export * from "json-schema";
+import { JSONSchema4 } from "json-schema";
+import { OpenAPIV3 } from "openapi-types";
+import { ParsedPath } from "path";
 
 /** Returns the client import snippet placed at the top of each generated file. */
 export type ClientImportTemplate = () => string;
@@ -96,75 +96,75 @@ export interface Category {
 
 /** Request method */
 export enum Method {
-  GET = 'GET',
-  POST = 'POST',
-  PUT = 'PUT',
-  DELETE = 'DELETE',
-  HEAD = 'HEAD',
-  OPTIONS = 'OPTIONS',
-  PATCH = 'PATCH',
+  GET = "GET",
+  POST = "POST",
+  PUT = "PUT",
+  DELETE = "DELETE",
+  HEAD = "HEAD",
+  OPTIONS = "OPTIONS",
+  PATCH = "PATCH",
 }
 
 /** Required */
 export enum Required {
   /** Not required */
-  false = '0',
+  false = "0",
   /** Required */
-  true = '1',
+  true = "1",
 }
 
 /** Request body type */
 export enum RequestBodyType {
   /** Query string */
-  query = 'query',
+  query = "query",
   /** Form */
-  form = 'form',
+  form = "form",
   /** JSON */
-  json = 'json',
+  json = "json",
   /** Plain text */
-  text = 'text',
+  text = "text",
   /** File */
-  file = 'file',
+  file = "file",
   /** Raw data */
-  raw = 'raw',
+  raw = "raw",
   /** No request data */
-  none = 'none',
+  none = "none",
 }
 
 /** Request path parameter type */
 export enum RequestParamType {
   /** String */
-  string = 'string',
+  string = "string",
   /** Number */
-  number = 'number',
+  number = "number",
 }
 
 /** Request query parameter type */
 export enum RequestQueryType {
   /** String */
-  string = 'string',
+  string = "string",
   /** Number */
-  number = 'number',
+  number = "number",
 }
 
 /** Request form item type */
 export enum RequestFormItemType {
   /** Plain text */
-  text = 'text',
+  text = "text",
   /** File */
-  file = 'file',
+  file = "file",
 }
 
 /** Response body type */
 export enum ResponseBodyType {
   /** JSON */
-  json = 'json',
+  json = "json",
   /** Plain text */
-  text = 'text',
+  text = "text",
   /** XML */
-  xml = 'xml',
+  xml = "xml",
   /** Raw data */
-  raw = 'raw',
+  raw = "raw",
 }
 
 /** Extended interface definition */
@@ -266,7 +266,7 @@ export interface ApiConfig {
 /** Combined configuration. */
 export type SyntheticalConfig = Partial<
   ApiConfig & {
-    components: OpenAPIV3.Document['components'];
+    components: OpenAPIV3.Document["components"];
   }
 >;
 
@@ -334,7 +334,7 @@ export interface PropDefinition {
   /** Required */
   required: boolean;
   /** Type */
-  type: JSONSchema4['type'];
+  type: JSONSchema4["type"];
   /** Comment */
   comment: string;
   /** Whether the property is an array (used for multi-file upload fields) */

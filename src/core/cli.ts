@@ -1,16 +1,16 @@
-import {register} from 'tsx/cjs/api';
-import fs from 'fs-extra';
-import path from 'path';
-import prompt from 'prompts';
-import yargs from 'yargs';
-import {Config} from '../types';
-import {dedent} from '../utils/vtilsLite';
-import {Generator} from './generator';
-import chalk from 'chalk';
-import * as conso from '../utils/console';
-import {formatContent} from '../utils/utils';
-import {spinnerInstance} from '../utils/spinner';
-import {asyncFnArrayOrderRun, defineConfig} from '../utils/helpers';
+import { register } from "tsx/cjs/api";
+import fs from "fs-extra";
+import path from "path";
+import prompt from "prompts";
+import yargs from "yargs";
+import { Config } from "../types";
+import { dedent } from "../utils/vtilsLite";
+import { Generator } from "./generator";
+import chalk from "chalk";
+import * as conso from "../utils/console";
+import { formatContent } from "../utils/utils";
+import { spinnerInstance } from "../utils/spinner";
+import { asyncFnArrayOrderRun, defineConfig } from "../utils/helpers";
 
 // Register the tsx loader so apits.config.ts / apits.config.local.ts can be
 // required at runtime. tsx transpiles via esbuild (no type-checking) and
@@ -35,15 +35,15 @@ interface GenFlags {
 
 // Config file candidates in priority order; the first match wins.
 const CONFIG_FILE_CANDIDATES = [
-  'apits.config.local.ts',
-  'apits.config.ts',
-  'apits.config.local.json',
-  'apits.config.json',
+  "apits.config.local.ts",
+  "apits.config.ts",
+  "apits.config.local.json",
+  "apits.config.json",
 ];
 
 interface DiscoveredConfig {
   filePath: string;
-  kind: 'ts' | 'json' | 'package';
+  kind: "ts" | "json" | "package";
 }
 
 /** Raised when neither a CLI input nor a config file can be found. */
@@ -66,16 +66,16 @@ async function discoverConfigFile(cwd: string = process.cwd()): Promise<Discover
   for (const fileName of CONFIG_FILE_CANDIDATES) {
     const filePath = path.join(cwd, fileName);
     if (await fs.pathExists(filePath)) {
-      return {filePath, kind: fileName.endsWith('.json') ? 'json' : 'ts'};
+      return { filePath, kind: fileName.endsWith(".json") ? "json" : "ts" };
     }
   }
 
-  const packageJsonPath = path.join(cwd, 'package.json');
+  const packageJsonPath = path.join(cwd, "package.json");
   if (await fs.pathExists(packageJsonPath)) {
     try {
-      const pkg = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
+      const pkg = JSON.parse(await fs.readFile(packageJsonPath, "utf-8"));
       if (pkg.apits) {
-        return {filePath: packageJsonPath, kind: 'package'};
+        return { filePath: packageJsonPath, kind: "package" };
       }
     } catch {
       // A malformed package.json should not crash config discovery.
@@ -87,19 +87,19 @@ async function discoverConfigFile(cwd: string = process.cwd()): Promise<Discover
 
 /** Load configs from a discovered file. */
 function loadConfigFile(discovered: DiscoveredConfig): Config[] {
-  const {filePath, kind} = discovered;
+  const { filePath, kind } = discovered;
 
-  if (kind === 'ts') {
+  if (kind === "ts") {
     // tsx is registered at module load time.
     const mod = require(filePath);
     return normalizeConfig(mod.default ?? mod);
   }
 
-  if (kind === 'json') {
-    return normalizeConfig(JSON.parse(fs.readFileSync(filePath, 'utf-8')));
+  if (kind === "json") {
+    return normalizeConfig(JSON.parse(fs.readFileSync(filePath, "utf-8")));
   }
 
-  const pkg = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const pkg = JSON.parse(fs.readFileSync(filePath, "utf-8"));
   return normalizeConfig(pkg.apits);
 }
 
@@ -107,7 +107,7 @@ function loadConfigFile(discovered: DiscoveredConfig): Config[] {
 function buildCliConfig(flags: GenFlags): Config {
   const config: Config = {
     input: flags.input!,
-    output: flags.output || 'src/api',
+    output: flags.output || "src/api",
   };
   if (flags.name) {
     config.name = flags.name;
@@ -128,7 +128,7 @@ function buildCliConfig(flags: GenFlags): Config {
  */
 function assignUniqueNames(configs: Config[]) {
   const counts = new Map<string, number>();
-  configs.forEach(item => {
+  configs.forEach((item) => {
     const base = item.name || Generator.deriveName(item.input);
     const seen = counts.get(base) ?? 0;
     counts.set(base, seen + 1);
@@ -143,13 +143,13 @@ function assignUniqueNames(configs: Config[]) {
  * Precedence: CLI flags > config file > built-in defaults.
  */
 async function resolveConfigs(
-  flags: GenFlags
-): Promise<{configs: Config[]; source: 'cli' | 'file'; configFile?: string}> {
+  flags: GenFlags,
+): Promise<{ configs: Config[]; source: "cli" | "file"; configFile?: string }> {
   // 1. Positional input — the zero-config path.
   if (flags.input) {
     const configs = [buildCliConfig(flags)];
     assignUniqueNames(configs);
-    return {configs, source: 'cli'};
+    return { configs, source: "cli" };
   }
 
   // 2. Optional config file.
@@ -159,7 +159,7 @@ async function resolveConfigs(
 
     // In config-file mode `--name` filters which source(s) to run.
     if (flags.name) {
-      configs = configs.filter(item => item.name === flags.name);
+      configs = configs.filter((item) => item.name === flags.name);
       if (configs.length === 0) {
         throw new Error(`No config found with name: ${flags.name}`);
       }
@@ -167,15 +167,15 @@ async function resolveConfigs(
 
     // CLI flags override config-file values. `--client` forces true,
     // `--no-client` forces false; omitting the flag keeps the config value.
-    configs = configs.map(item => ({
+    configs = configs.map((item) => ({
       ...item,
-      ...(flags.output ? {output: flags.output} : {}),
-      ...(flags.baseUrl !== undefined ? {baseURL: flags.baseUrl} : {}),
-      ...(flags.client !== undefined ? {client: flags.client} : {}),
+      ...(flags.output ? { output: flags.output } : {}),
+      ...(flags.baseUrl !== undefined ? { baseURL: flags.baseUrl } : {}),
+      ...(flags.client !== undefined ? { client: flags.client } : {}),
     }));
 
     assignUniqueNames(configs);
-    return {configs, source: 'file', configFile: discovered.filePath};
+    return { configs, source: "file", configFile: discovered.filePath };
   }
 
   // 3. Nothing to generate from.
@@ -186,54 +186,54 @@ async function resolveConfigs(
 function printNoInputHint() {
   conso.error(
     [
-      'No OpenAPI input found. Use one of:',
-      '',
-      '  1. Pass document URL or path directly (no config file needed):',
-      '     apits gen http://localhost:3041/api-json -o src/api',
-      '     apits gen ./openapi.yaml',
-      '',
-      '  2. Generate a config file (multi-source / function-based customization):',
-      '     apits init',
-    ].join('\n')
+      "No OpenAPI input found. Use one of:",
+      "",
+      "  1. Pass document URL or path directly (no config file needed):",
+      "     apits gen http://localhost:3041/api-json -o src/api",
+      "     apits gen ./openapi.yaml",
+      "",
+      "  2. Generate a config file (multi-source / function-based customization):",
+      "     apits init",
+    ].join("\n"),
   );
 }
 
 /** Scaffold an optional apits.config.ts template. */
-export async function genConfig(prefill?: {input?: string}) {
+export async function genConfig(prefill?: { input?: string }) {
   const cwd = process.cwd();
-  const configTSFile = path.join(cwd, 'apits.config.ts');
+  const configTSFile = path.join(cwd, "apits.config.ts");
 
   if (await fs.pathExists(configTSFile)) {
     conso.tips(`Config file already exists: ${configTSFile}`);
     const answers = await prompt({
-      message: 'Overwrite existing config file?',
-      name: 'override',
-      type: 'confirm',
+      message: "Overwrite existing config file?",
+      name: "override",
+      type: "confirm",
     });
     if (!answers.override) return;
   }
 
   const configAnswers = await prompt([
     {
-      message: 'API document URL or local JSON/YAML file path',
-      name: 'input',
-      type: 'text',
-      initial: prefill?.input || '',
+      message: "API document URL or local JSON/YAML file path",
+      name: "input",
+      type: "text",
+      initial: prefill?.input || "",
     },
     {
-      message: 'Generated file name (optional, derived from input if blank)',
-      name: 'name',
-      type: 'text',
-      initial: '',
+      message: "Generated file name (optional, derived from input if blank)",
+      name: "name",
+      type: "text",
+      initial: "",
     },
   ]);
 
   // User cancelled the questionnaire (Ctrl+C / empty input).
   if (!configAnswers || !configAnswers.input) {
-    return conso.tips('Cancelled, config file not written');
+    return conso.tips("Cancelled, config file not written");
   }
 
-  const nameLine = configAnswers?.name ? `  name: '${configAnswers.name}',\n` : '';
+  const nameLine = configAnswers?.name ? `  name: '${configAnswers.name}',\n` : "";
 
   await fs.outputFile(
     configTSFile,
@@ -241,20 +241,20 @@ export async function genConfig(prefill?: {input?: string}) {
       import { defineConfig } from 'apits-gen'
 
       export default defineConfig([{
-        input: '${configAnswers?.input || ''}',
+        input: '${configAnswers?.input || ""}',
         output: 'src/api',
       ${nameLine}  baseURL: '[code]:process.env.BASE_API_URL',
         clientImportTemplate: () => "${`import request from './request'`}",
         // Keep the scaffolded request.ts because the import above points at it.
         client: true,
       }])
-    `)
+    `),
   );
-  conso.success('Config file written');
+  conso.success("Config file written");
 }
 
 async function startGenerate(config: Config, index = 0) {
-  const {output: outputDir} = config;
+  const { output: outputDir } = config;
 
   const label = chalk.green(`${config.input} elapsed`);
   console.time(label);
@@ -266,7 +266,7 @@ async function startGenerate(config: Config, index = 0) {
   conso.log(chalk.yellowBright(`\n${index + 1}.-------------------------`));
   conso.success(`Code generated, output: ${outputDir}`);
   console.timeEnd(label);
-  conso.log(chalk.yellowBright('---------------------------\n'));
+  conso.log(chalk.yellowBright("---------------------------\n"));
   return true;
 }
 
@@ -277,7 +277,7 @@ async function runAll(configs: Config[]) {
       return async () => {
         await startGenerate(configItem, index);
       };
-    })
+    }),
   );
 }
 
@@ -286,26 +286,26 @@ async function runAll(configs: Config[]) {
  * Remote inputs are not watchable; a hint is printed instead.
  */
 function watchConfigs(configs: Config[]) {
-  const localConfigs = configs.filter(item => !isHttpInput(item.input));
+  const localConfigs = configs.filter((item) => !isHttpInput(item.input));
 
   if (localConfigs.length === 0) {
-    conso.tips('--watch only supports local files; remote URLs are ignored');
+    conso.tips("--watch only supports local files; remote URLs are ignored");
     return;
   }
 
   // Simple debounce so editors that save twice only trigger one rebuild.
   const timers = new Map<string, NodeJS.Timeout>();
 
-  localConfigs.forEach(configItem => {
+  localConfigs.forEach((configItem) => {
     const filePath = path.resolve(configItem.input);
-    fs.watch(filePath, async eventType => {
+    fs.watch(filePath, async (eventType) => {
       // Handle both 'change' and 'rename' — macOS atomic save (e.g. vim's
       // write-and-rename) triggers 'rename', and the watcher may need to be
       // re-established after the inode changes. Re-create the watcher on
       // rename to avoid silently losing subsequent changes.
-      if (eventType === 'rename') {
+      if (eventType === "rename") {
         try {
-          fs.watch(filePath, async ev => {
+          fs.watch(filePath, async (ev) => {
             scheduleRebuild(filePath, ev);
           });
         } catch {
@@ -318,13 +318,13 @@ function watchConfigs(configs: Config[]) {
   });
 
   function scheduleRebuild(filePath: string, eventType: string) {
-    if (eventType !== 'change' && eventType !== 'rename') return;
+    if (eventType !== "change" && eventType !== "rename") return;
     const oldTimer = timers.get(filePath);
     if (oldTimer) clearTimeout(oldTimer);
     timers.set(
       filePath,
       setTimeout(async () => {
-        const configItem = localConfigs.find(c => path.resolve(c.input) === filePath);
+        const configItem = localConfigs.find((c) => path.resolve(c.input) === filePath);
         if (!configItem) return;
         const idx = localConfigs.indexOf(configItem);
         conso.tips(`Detected change, regenerating: ${filePath}`);
@@ -333,7 +333,7 @@ function watchConfigs(configs: Config[]) {
         } catch (err) {
           conso.error(`Regeneration failed: ${(err as Error).message || err}`);
         }
-      }, 200)
+      }, 200),
     );
   }
 
@@ -341,10 +341,10 @@ function watchConfigs(configs: Config[]) {
 }
 
 export async function start(flags: GenFlags = {}) {
-  const timeLabel = chalk.green('Total elapsed');
+  const timeLabel = chalk.green("Total elapsed");
   console.time(timeLabel);
 
-  let resolved: {configs: Config[]; source: 'cli' | 'file'; configFile?: string};
+  let resolved: { configs: Config[]; source: "cli" | "file"; configFile?: string };
   try {
     resolved = await resolveConfigs(flags);
   } catch (err) {
@@ -358,16 +358,16 @@ export async function start(flags: GenFlags = {}) {
   }
 
   conso.tips(
-    resolved.source === 'cli' ? `Using CLI input: ${flags.input}` : `Found config file: ${resolved.configFile}`
+    resolved.source === "cli" ? `Using CLI input: ${flags.input}` : `Found config file: ${resolved.configFile}`,
   );
 
   try {
-    spinnerInstance.start('Generating code...\n');
+    spinnerInstance.start("Generating code...\n");
     await runAll(resolved.configs);
     spinnerInstance.stop();
   } catch (err) {
     spinnerInstance.stop();
-    conso.error('Execution failed:');
+    conso.error("Execution failed:");
     conso.error(`Error: ${(err as Error).message || err}`);
     if ((err as Error).stack) {
       conso.error(`Stack: ${(err as Error).stack}`);
@@ -375,7 +375,7 @@ export async function start(flags: GenFlags = {}) {
     if ((err as any).cause) {
       conso.error(`Cause: ${(err as any).cause}`);
     }
-    return conso.error('Code generation failed, see error details above');
+    return conso.error("Code generation failed, see error details above");
   }
 
   console.timeEnd(timeLabel);
@@ -390,11 +390,11 @@ export async function start(flags: GenFlags = {}) {
 /** Map parsed yargs argv into GenFlags. */
 function toFlags(argv: any): GenFlags {
   return {
-    input: typeof argv.input === 'string' && argv.input ? argv.input : undefined,
-    output: typeof argv.output === 'string' ? argv.output : undefined,
-    name: typeof argv.name === 'string' ? argv.name : undefined,
-    baseUrl: typeof argv.baseUrl === 'string' ? argv.baseUrl : undefined,
-    client: typeof argv.client === 'boolean' ? argv.client : undefined,
+    input: typeof argv.input === "string" && argv.input ? argv.input : undefined,
+    output: typeof argv.output === "string" ? argv.output : undefined,
+    name: typeof argv.name === "string" ? argv.name : undefined,
+    baseUrl: typeof argv.baseUrl === "string" ? argv.baseUrl : undefined,
+    client: typeof argv.client === "boolean" ? argv.client : undefined,
     watch: Boolean(argv.watch),
   };
 }
@@ -411,73 +411,73 @@ export default class CLI {
 
   private genBuilder(y: yargs.Argv) {
     return y
-      .positional('input', {
-        type: 'string',
-        describe: 'OpenAPI document URL or local JSON/YAML file path',
+      .positional("input", {
+        type: "string",
+        describe: "OpenAPI document URL or local JSON/YAML file path",
       })
-      .option('output', {
-        alias: 'o',
-        type: 'string',
-        describe: 'Output directory (default: src/api)',
+      .option("output", {
+        alias: "o",
+        type: "string",
+        describe: "Output directory (default: src/api)",
       })
-      .option('name', {
-        alias: 'n',
-        type: 'string',
-        describe: 'Generated file name; filters by name in config-file mode',
+      .option("name", {
+        alias: "n",
+        type: "string",
+        describe: "Generated file name; filters by name in config-file mode",
       })
-      .option('base-url', {
-        type: 'string',
-        describe: 'Runtime baseURL (supports [code]: prefix for code emission)',
+      .option("base-url", {
+        type: "string",
+        describe: "Runtime baseURL (supports [code]: prefix for code emission)",
       })
-      .option('client', {
-        type: 'boolean',
-        describe: 'Generate default request.ts (use --no-client to disable, --client to force-enable)',
+      .option("client", {
+        type: "boolean",
+        describe: "Generate default request.ts (use --no-client to disable, --client to force-enable)",
       })
-      .option('watch', {
-        alias: 'w',
-        type: 'boolean',
+      .option("watch", {
+        alias: "w",
+        type: "boolean",
         default: false,
-        describe: 'Watch local document for changes and auto-regenerate',
+        describe: "Watch local document for changes and auto-regenerate",
       });
   }
 
   init() {
     return (
       yargs
-        .scriptName('apits')
-        .usage('Usage: $0 [gen] [input] [options]')
+        .scriptName("apits")
+        .usage("Usage: $0 [gen] [input] [options]")
         // `init` must be declared before the default command so it is not
         // captured as the `input` positional.
         .command<any>(
-          'init [input]',
-          'Scaffold an optional apits.config.ts file',
-          y => {
-            y.positional('input', {
-              type: 'string',
-              describe: 'Prefilled document URL or local file path',
+          "init [input]",
+          "Scaffold an optional apits.config.ts file",
+          (y) => {
+            y.positional("input", {
+              type: "string",
+              describe: "Prefilled document URL or local file path",
             });
           },
           async (argv: any) => {
-            await genConfig({input: typeof argv.input === 'string' ? argv.input : undefined});
-          }
+            await genConfig({ input: typeof argv.input === "string" ? argv.input : undefined });
+          },
         )
         // `gen` is also the default command: `apits <input>` works.
         // The default-command alias is hidden from help to keep it clean.
         .command<any>(
-          'gen [input]',
-          'Generate TypeScript types and request functions from an OpenAPI document',
+          "gen [input]",
+          "Generate TypeScript types and request functions from an OpenAPI document",
           (y: any) => this.genBuilder(y),
           (argv: any) => {
             start(toFlags(argv));
-          }
+          },
         )
         .command<any>(
-          '$0 [input]',
+          "$0 [input]",
           false,
           (y: any) => this.genBuilder(y),
           (argv: any) => {
             start(toFlags(argv));
-          }
+          },
         )
         .help()
     );

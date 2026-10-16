@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import chalk from "chalk";
 
 /** Log a plain message. */
 export function log(message?: any, ...args: any[]): void {
@@ -37,5 +37,5 @@ export function table(tabularData: any, properties?: ReadonlyArray<string>): voi
 
 /** Print a separator line (or a blank line). */
 export function line(blank?: boolean) {
-  console.log(`\n${!blank ? '-----------------------' : ''}`);
+  console.log(`\n${!blank ? "-----------------------" : ""}`);
 }

@@ -1,19 +1,19 @@
-import {OpenAPIV3} from 'openapi-types';
-import {Interface, RequestBodyType, RequestFormItemType, Required, ResponseBodyType} from '../types';
-import {each, find} from './vtilsLite';
-import * as conso from './console';
+import { OpenAPIV3 } from "openapi-types";
+import { Interface, RequestBodyType, RequestFormItemType, Required, ResponseBodyType } from "../types";
+import { each, find } from "./vtilsLite";
+import * as conso from "./console";
 
 function handlePath(p: string) {
-  if (p === '/') return p;
-  if (p.charAt(0) !== '/') p = `/${p}`;
-  if (p.charAt(p.length - 1) === '/') p = p.slice(0, -1);
+  if (p === "/") return p;
+  if (p.charAt(0) !== "/") p = `/${p}`;
+  if (p.charAt(p.length - 1) === "/") p = p.slice(0, -1);
   return p;
 }
 
 /** Resolve a JSON `$ref` pointer (e.g. `#/components/parameters/Foo`) from the root spec. */
 function resolveRef(ref: string, root: OpenAPIV3.Document): any {
-  if (!ref || typeof ref !== 'string' || !ref.startsWith('#/') || ref.length <= 2) return null;
-  const parts = ref.slice(2).split('/').filter(Boolean);
+  if (!ref || typeof ref !== "string" || !ref.startsWith("#/") || ref.length <= 2) return null;
+  const parts = ref.slice(2).split("/").filter(Boolean);
   let node: any = root;
   for (const part of parts) {
     if (node == null) return null;
@@ -24,7 +24,7 @@ function resolveRef(ref: string, root: OpenAPIV3.Document): any {
 
 /** Check whether a value is a `$ref` object (vs a concrete schema). */
 function isRef(obj: any): obj is OpenAPIV3.ReferenceObject {
-  return obj != null && typeof obj === 'object' && '$ref' in obj;
+  return obj != null && typeof obj === "object" && "$ref" in obj;
 }
 
 /**
@@ -37,9 +37,9 @@ function isRef(obj: any): obj is OpenAPIV3.ReferenceObject {
  * - `additionalProperties` on a form schema → `req_body_additional`
  */
 function handleRequestBody(requestBody: OpenAPIV3.RequestBodyObject | undefined, api: Interface): void {
-  if (!requestBody || typeof requestBody !== 'object') return;
+  if (!requestBody || typeof requestBody !== "object") return;
   const content = requestBody.content || {};
-  const jsonContent = content['application/json'];
+  const jsonContent = content["application/json"];
 
   if (jsonContent && jsonContent.schema) {
     api.req_body_other = JSON.stringify(jsonContent.schema, null, 2);
@@ -50,8 +50,8 @@ function handleRequestBody(requestBody: OpenAPIV3.RequestBodyObject | undefined,
 
   // Form-encoded bodies: expand the schema into individual form fields so
   // binary fields render as `file` and the request body type becomes `form`.
-  const multipartContent = content['multipart/form-data'];
-  const formContent = multipartContent || content['application/x-www-form-urlencoded'];
+  const multipartContent = content["multipart/form-data"];
+  const formContent = multipartContent || content["application/x-www-form-urlencoded"];
   if (formContent && formContent.schema) {
     const schema = formContent.schema as any;
     // Skip $ref schemas (not resolvable in this context).
@@ -65,22 +65,22 @@ function handleRequestBody(requestBody: OpenAPIV3.RequestBodyObject | undefined,
       // formData has no array-of-file concept, so the field is emitted
       // as `type:'file'` with an `isArray` marker.
       const arrayItems = Array.isArray(prop.items) ? prop.items[0] : prop.items;
-      const isFileArray = prop.type === 'array' && arrayItems && arrayItems.format === 'binary';
-      const isFile = prop.format === 'binary' || isFileArray;
+      const isFileArray = prop.type === "array" && arrayItems && arrayItems.format === "binary";
+      const isFile = prop.format === "binary" || isFileArray;
       api.req_body_form.push({
         name,
         type: isFile ? RequestFormItemType.file : RequestFormItemType.text,
-        desc: prop.description || '',
-        example: '',
+        desc: prop.description || "",
+        example: "",
         required: required.indexOf(name) > -1 ? Required.true : Required.false,
-        ...(isFileArray ? {isArray: true} : {}),
-        ...(Array.isArray(prop.enum) && prop.enum.length ? {enum: prop.enum} : {}),
+        ...(isFileArray ? { isArray: true } : {}),
+        ...(Array.isArray(prop.enum) && prop.enum.length ? { enum: prop.enum } : {}),
       });
     }
     // Dynamic upload fields declared via `additionalProperties` (e.g.
     // evidence_0, evidence_1, ...). Their names are derived at runtime so
     // they cannot be expanded into named form params.
-    if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+    if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
       api.req_body_additional = schema.additionalProperties;
     }
     api.req_body_type = RequestBodyType.form;
@@ -94,25 +94,25 @@ function handleRequestBody(requestBody: OpenAPIV3.RequestBodyObject | undefined,
  *
  * Reads `res.content` media types to determine whether a JSON schema exists.
  */
-function handleResponse(responses: OpenAPIV3.ResponsesObject | undefined): {body: string; hasSchema: boolean} {
-  if (!responses || typeof responses !== 'object') return {body: '', hasSchema: false};
+function handleResponse(responses: OpenAPIV3.ResponsesObject | undefined): { body: string; hasSchema: boolean } {
+  if (!responses || typeof responses !== "object") return { body: "", hasSchema: false };
 
   const codes = Object.keys(responses);
-  if (codes.length === 0) return {body: '', hasSchema: false};
+  if (codes.length === 0) return { body: "", hasSchema: false };
 
-  const curCode = codes.indexOf('200') > -1 ? '200' : codes[0];
+  const curCode = codes.indexOf("200") > -1 ? "200" : codes[0];
   const res = (responses as Record<string, OpenAPIV3.ResponseObject | OpenAPIV3.ReferenceObject>)[curCode];
-  if (!res || typeof res !== 'object') {
-    return {body: '', hasSchema: false};
+  if (!res || typeof res !== "object") {
+    return { body: "", hasSchema: false };
   }
 
   // Skip $ref responses (not resolvable in this context).
-  if (isRef(res)) return {body: '', hasSchema: false};
+  if (isRef(res)) return { body: "", hasSchema: false };
 
   const content = res.content;
-  if (content && typeof content === 'object') {
+  if (content && typeof content === "object") {
     // Prefer application/json, then hal+json, then */*.
-    const mediaType = content['application/json'] || content['application/hal+json'] || content['*/*'];
+    const mediaType = content["application/json"] || content["application/hal+json"] || content["*/*"];
     if (mediaType && mediaType.schema) {
       return {
         body: JSON.stringify(mediaType.schema, null, 2),
@@ -122,8 +122,8 @@ function handleResponse(responses: OpenAPIV3.ResponsesObject | undefined): {body
   }
 
   // No schema found — fall back to description.
-  if (res.description) return {body: res.description, hasSchema: false};
-  return {body: '', hasSchema: false};
+  if (res.description) return { body: res.description, hasSchema: false };
+  return { body: "", hasSchema: false };
 }
 
 /** Convert a single OAS3 path-item operation into an `Interface`. */
@@ -132,21 +132,21 @@ function handleOpenApiOperation(
   path: string,
   method: string,
   originTags: OpenAPIV3.TagObject[],
-  root: OpenAPIV3.Document
+  root: OpenAPIV3.Document,
 ): Interface {
   const api: Interface = {
     title: operation.summary || path,
     path: handlePath(path),
-    method: method.toUpperCase() as Interface['method'],
+    method: method.toUpperCase() as Interface["method"],
     req_params: [],
     req_body_form: [],
     req_query: [],
     req_body_type: RequestBodyType.raw,
     req_body_is_json_schema: false,
-    req_body_other: '',
+    req_body_other: "",
     res_body_type: ResponseBodyType.raw,
     res_body_is_json_schema: false,
-    res_body: '',
+    res_body: "",
   };
 
   // Category from tags.
@@ -154,7 +154,7 @@ function handleOpenApiOperation(
   if (Array.isArray(operation.tags)) {
     for (const tag of operation.tags) {
       if (/v[0-9.]+/.test(tag)) continue;
-      if (originTags.length > 0 && find(originTags, item => item.name === tag)) {
+      if (originTags.length > 0 && find(originTags, (item) => item.name === tag)) {
         api.catname = tag;
         break;
       }
@@ -172,25 +172,25 @@ function handleOpenApiOperation(
       if (isRef(param)) {
         param = resolveRef(param.$ref, root);
       }
-      if (!param || typeof param !== 'object') continue;
+      if (!param || typeof param !== "object") continue;
       const p = param as OpenAPIV3.ParameterObject;
 
       const paramObj: any = {
         name: p.name,
-        desc: p.description || '',
+        desc: p.description || "",
         type: p.schema ? (p.schema as any).type : (p as any).type,
         required: p.required ? Required.true : Required.false,
-        example: '',
+        example: "",
       };
 
       switch (p.in) {
-        case 'path':
+        case "path":
           api.req_params.push(paramObj);
           break;
-        case 'query':
+        case "query":
           api.req_query.push(paramObj);
           break;
-        case 'header':
+        case "header":
           // Headers are not consumed downstream; skip silently.
           break;
         default:
@@ -204,7 +204,7 @@ function handleOpenApiOperation(
   handleRequestBody(isRef(reqBody) ? undefined : reqBody, api);
 
   // Process the OAS3 responses directly.
-  const {body: resBody, hasSchema} = handleResponse(operation.responses);
+  const { body: resBody, hasSchema } = handleResponse(operation.responses);
   api.res_body = resBody;
   if (hasSchema) {
     api.res_body_type = ResponseBodyType.json;
@@ -228,7 +228,7 @@ function handleOpenApiOperation(
 export async function openApiToInterfaces(data: OpenAPIV3.Document | string): Promise<{
   interfaces: Interface[];
 }> {
-  if (typeof data === 'string' && data) {
+  if (typeof data === "string" && data) {
     try {
       data = JSON.parse(data);
     } catch (e: any) {
@@ -245,7 +245,7 @@ export async function openApiToInterfaces(data: OpenAPIV3.Document | string): Pr
     // `parameters` at the path-item level are common parameters, not an operation.
     delete pathItem.parameters;
     each(pathItem, (operation: OpenAPIV3.OperationObject, method: string) => {
-      if (!operation || typeof operation !== 'object') return;
+      if (!operation || typeof operation !== "object") return;
       try {
         const iface = handleOpenApiOperation(operation, path, method, tags, doc);
         interfaces.push(iface);
@@ -255,5 +255,5 @@ export async function openApiToInterfaces(data: OpenAPIV3.Document | string): Pr
     });
   });
 
-  return {interfaces};
+  return { interfaces };
 }

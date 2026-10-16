@@ -32,7 +32,7 @@ export const isArray = Array.isArray;
  * values used in this project.
  */
 export function isObject(value: any): value is Record<string, any> {
-  return value != null && typeof value === 'object' && !Array.isArray(value);
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }
 
 /**
@@ -41,8 +41,8 @@ export function isObject(value: any): value is Record<string, any> {
  */
 export function isEmpty(value: any): boolean {
   if (value == null) return true;
-  if (typeof value === 'string' || Array.isArray(value)) return value.length === 0;
-  if (typeof value === 'object') return Object.keys(value).length === 0;
+  if (typeof value === "string" || Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") return Object.keys(value).length === 0;
   return true;
 }
 
@@ -52,7 +52,7 @@ export function isEmpty(value: any): boolean {
  */
 export function forOwn<T extends object>(obj: T, callback: (value: T[keyof T], key: keyof T) => void): void {
   if (obj == null) return;
-  Object.keys(obj).forEach(key => {
+  Object.keys(obj).forEach((key) => {
     callback((obj as any)[key], key as keyof T);
   });
 }
@@ -66,8 +66,8 @@ export function each(collection: any, callback: (value: any, key: any) => void):
   if (collection == null) return;
   if (Array.isArray(collection)) {
     collection.forEach((value, index) => callback(value, index));
-  } else if (typeof collection === 'object') {
-    Object.keys(collection).forEach(key => {
+  } else if (typeof collection === "object") {
+    Object.keys(collection).forEach((key) => {
       callback(collection[key], key);
     });
   }
@@ -82,7 +82,7 @@ export function find(collection: any, predicate: (value: any, key: any) => boole
   if (Array.isArray(collection)) {
     return collection.find((value, index) => predicate(value, index));
   }
-  if (typeof collection === 'object') {
+  if (typeof collection === "object") {
     for (const key of Object.keys(collection)) {
       const value = collection[key];
       if (predicate(value, key)) return value;
@@ -100,7 +100,7 @@ export function dedent(literals: TemplateStringsArray, ...interpolations: any[])
   // Step 1: replicate vtils `indent` — when an interpolation spans multiple
   // lines, prefix every continuation line with the whitespace that precedes
   // the interpolation point so relative indentation is preserved.
-  let text = '';
+  let text = "";
   for (let i = 0; i < interpolations.length; i++) {
     const literal = literals[i];
     const interpolation = String(interpolations[i]);
@@ -135,6 +135,6 @@ export function dedent(literals: TemplateStringsArray, ...interpolations: any[])
   if (commonLeadingWhitespace == null) return text;
   return lines
     .slice(firstLineIndex!, lastLineIndex! + 1)
-    .map(line => line.slice(commonLeadingWhitespace!.length))
-    .join('\n');
+    .map((line) => line.slice(commonLeadingWhitespace!.length))
+    .join("\n");
 }

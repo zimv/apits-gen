@@ -1,7 +1,7 @@
-import {castArray, forOwn, isArray, isEmpty, isObject} from './vtilsLite';
-import {compile} from 'json-schema-to-typescript';
-import type {Defined} from './vtilsLite';
-import {format as prettierFormat, resolveConfig, type Options as PrettierOptions} from 'prettier';
+import { castArray, forOwn, isArray, isEmpty, isObject } from "./vtilsLite";
+import { compile } from "json-schema-to-typescript";
+import type { Defined } from "./vtilsLite";
+import { format as prettierFormat, resolveConfig } from "prettier";
 import {
   Interface,
   PropDefinition,
@@ -10,8 +10,8 @@ import {
   RequestFormItemType,
   Required,
   ResponseBodyType,
-} from '../types';
-import {JSONSchema4, JSONSchema4TypeName} from 'json-schema';
+} from "../types";
+import { JSONSchema4, JSONSchema4TypeName } from "json-schema";
 
 /**
  * Uppercase the first character of a string, leaving the rest untouched.
@@ -55,8 +55,8 @@ export function processJsonSchema<T extends JSONSchema4>(jsonSchema: T): T {
   if (jsonSchema.nullable === true) {
     if (jsonSchema.type) {
       // Merge 'null' into the existing type(s) without duplicates.
-      const types = castArray(jsonSchema.type).filter(t => t !== 'null') as JSONSchema4TypeName[];
-      if (!types.includes('null')) types.push('null');
+      const types = castArray(jsonSchema.type).filter((t) => t !== "null") as JSONSchema4TypeName[];
+      if (!types.includes("null")) types.push("null");
       jsonSchema.type = types.length === 1 ? types[0] : types;
     } else if (jsonSchema.enum && Array.isArray(jsonSchema.enum)) {
       // For enum schemas without a type, append a null literal so the
@@ -74,14 +74,14 @@ export function processJsonSchema<T extends JSONSchema4>(jsonSchema: T): T {
   // Normalize type names to standard JSON Schema type names.
   if (jsonSchema.type) {
     const isMultiple = Array.isArray(jsonSchema.type);
-    const types = castArray(jsonSchema.type).map(type => {
+    const types = castArray(jsonSchema.type).map((type) => {
       // Lowercase all types, e.g. String -> string.
       type = type.toLowerCase() as any;
       // Map to standard JSON Schema types.
       type =
         (
           {
-            int: 'integer',
+            int: "integer",
           } as Record<string, JSONSchema4TypeName>
         )[type] || type;
       return type;
@@ -92,12 +92,12 @@ export function processJsonSchema<T extends JSONSchema4>(jsonSchema: T): T {
   // Mock.toJSONSchema produces `properties` as an array, but JSONSchema4 expects an object.
   if (isArray(jsonSchema.properties)) {
     // @ts-ignore
-    jsonSchema.properties = (jsonSchema.properties as JSONSchema4[]).reduce<Defined<JSONSchema4['properties']>>(
+    jsonSchema.properties = (jsonSchema.properties as JSONSchema4[]).reduce<Defined<JSONSchema4["properties"]>>(
       (props, js) => {
         props[js.name] = js;
         return props;
       },
-      {}
+      {},
     );
   }
 
@@ -108,7 +108,7 @@ export function processJsonSchema<T extends JSONSchema4>(jsonSchema: T): T {
       delete jsonSchema.properties![prop];
       jsonSchema.properties![(prop as string).trim()] = propDef;
     });
-    jsonSchema.required = jsonSchema.required && (jsonSchema.required as string[]).map(prop => prop.trim());
+    jsonSchema.required = jsonSchema.required && (jsonSchema.required as string[]).map((prop) => prop.trim());
   }
 
   // Recurse into child properties.
@@ -154,14 +154,14 @@ function jsonSchemaStringToJsonSchema(str: string): JSONSchema4 {
  */
 function propDefinitionsToJsonSchema(propDefinitions: PropDefinitions): JSONSchema4 {
   return processJsonSchema({
-    type: 'object',
+    type: "object",
     required: propDefinitions.reduce<string[]>((res, prop) => {
       if (prop.required) {
         res.push(prop.name);
       }
       return res;
     }, []),
-    properties: propDefinitions.reduce<Exclude<JSONSchema4['properties'], undefined>>((res, prop) => {
+    properties: propDefinitions.reduce<Exclude<JSONSchema4["properties"], undefined>>((res, prop) => {
       res[prop.name] = {
         type: prop.type,
         description: prop.comment,
@@ -169,33 +169,15 @@ function propDefinitionsToJsonSchema(propDefinitions: PropDefinitions): JSONSche
         // multi-file arrays) so generated code has no dangling reference
         // to the generator-internal `FileData` class. Non-file fields with
         // an enum constraint emit a literal union.
-        ...(prop.type === ('file' as any)
-          ? {tsType: prop.isArray ? 'File[]' : 'File'}
+        ...(prop.type === ("file" as any)
+          ? { tsType: prop.isArray ? "File[]" : "File" }
           : Array.isArray(prop.enum) && prop.enum.length
-            ? {enum: prop.enum}
+            ? { enum: prop.enum }
             : {}),
       };
       return res;
     }, {}),
   });
-}
-
-/**
- * Get the fallback prettier configuration used when the consumer project has
- * no prettier config of its own.
- * @returns prettier options
- */
-function getPrettier(): PrettierOptions {
-  return {
-    printWidth: 120,
-    tabWidth: 2,
-    singleQuote: true,
-    semi: true,
-    trailingComma: 'all',
-    bracketSpacing: false,
-    endOfLine: 'lf',
-    parser: 'babel-ts',
-  };
 }
 
 /**
@@ -221,7 +203,7 @@ export function preprocessSchema(schema: JSONSchema4): JSONSchema4 {
     return schema.map(preprocessSchema);
   }
 
-  const processed = {...schema};
+  const processed = { ...schema };
 
   // Drop empty enum arrays (a type with no values produces invalid output).
   if (processed.enum && Array.isArray(processed.enum) && processed.enum.length === 0) {
@@ -233,8 +215,8 @@ export function preprocessSchema(schema: JSONSchema4): JSONSchema4 {
   if (processed.nullable === true) {
     if (processed.type) {
       // Merge 'null' into the existing type(s) without duplicates.
-      const typeList: string[] = castArray(processed.type).filter(typeName => typeName !== 'null');
-      typeList.push('null');
+      const typeList: string[] = castArray(processed.type).filter((typeName) => typeName !== "null");
+      typeList.push("null");
       processed.type = (typeList.length === 1 ? typeList[0] : typeList) as any;
     } else if (Array.isArray(processed.enum)) {
       // For enum schemas without a type, append a null literal.
@@ -260,8 +242,8 @@ export function preprocessSchema(schema: JSONSchema4): JSONSchema4 {
  * type names as string literals.
  */
 function jsonSchemaTypeToTs(propSchema: any): string {
-  if (!propSchema || typeof propSchema !== 'object') {
-    return 'unknown';
+  if (!propSchema || typeof propSchema !== "object") {
+    return "unknown";
   }
   // Prefer an explicit tsType marker (set for $ref resolutions) over the
   // raw JSON Schema type name.
@@ -270,28 +252,28 @@ function jsonSchemaTypeToTs(propSchema: any): string {
   }
   // Enum schemas render as a union of string-literal types.
   if (propSchema.enum && Array.isArray(propSchema.enum) && propSchema.enum.length) {
-    return propSchema.enum.map((v: any) => (v === null ? 'null' : `'${String(v).replace(/'/g, "\\'")}'`)).join(' | ');
+    return propSchema.enum.map((v: any) => (v === null ? "null" : `'${String(v).replace(/'/g, "\\'")}'`)).join(" | ");
   }
   switch (propSchema.type) {
-    case 'integer':
-    case 'number':
-      return 'number';
-    case 'boolean':
-      return 'boolean';
-    case 'string':
-      return 'string';
-    case 'null':
-      return 'null';
-    case 'array': {
+    case "integer":
+    case "number":
+      return "number";
+    case "boolean":
+      return "boolean";
+    case "string":
+      return "string";
+    case "null":
+      return "null";
+    case "array": {
       // Best-effort: derive the element type from items, fall back to any.
       const itemSchema = Array.isArray(propSchema.items) ? propSchema.items[0] : propSchema.items;
       const itemTs = itemSchema && (itemSchema.tsType || jsonSchemaTypeToTs(itemSchema));
-      return itemTs ? `${itemTs}[]` : 'any[]';
+      return itemTs ? `${itemTs}[]` : "any[]";
     }
-    case 'object':
+    case "object":
     case undefined:
     default:
-      return 'unknown';
+      return "unknown";
   }
 }
 
@@ -317,21 +299,21 @@ export async function jsonSchemaToTsCode(jsonSchema: JSONSchema4, typeName: stri
   function rewriteRefs(obj: any) {
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
-        if (key === '$ref' && typeof obj[key] === 'string') {
+        if (key === "$ref" && typeof obj[key] === "string") {
           let refValue = obj[key];
           // '#/components' is the standard path, but some non-standard sources use '#components'.
-          if (refValue.startsWith('#components')) {
-            refValue = refValue.replace('#components', '#/components');
+          if (refValue.startsWith("#components")) {
+            refValue = refValue.replace("#components", "#/components");
           }
           // Resolve references pointing to components.schemas.
-          if (refValue.startsWith('#/components/schemas/')) {
-            const interfaceName = refValue.replace('#/components/schemas/', '');
+          if (refValue.startsWith("#/components/schemas/")) {
+            const interfaceName = refValue.replace("#/components/schemas/", "");
             // Files under /components/schemas are generated as ts interfaces named
             // after the file. The `tsType` marker tells the compiler to emit a
             // reference to that interface. The compiler uppercases the first
             // letter of tsType, so we uppercase the name here to keep references
             // aligned with the generated interface names.
-            obj['tsType'] = upperFirst(interfaceName);
+            obj["tsType"] = upperFirst(interfaceName);
             // When the object has extra properties alongside `$ref`, build an
             // inline object type from those properties. The common case is a
             // path param merged onto a body DTO.
@@ -343,17 +325,17 @@ export async function jsonSchemaToTsCode(jsonSchema: JSONSchema4, typeName: stri
               // without a required array.
               const requiredArr: string[] = Array.isArray(obj.required) ? obj.required : [];
               const propParts: string[] = [];
-              Object.keys(obj.properties).forEach(key => {
+              Object.keys(obj.properties).forEach((key) => {
                 const propSchema = obj.properties[key];
                 const tsType = propSchema.tsType || jsonSchemaTypeToTs(propSchema);
-                const optional = requiredArr.includes(key) ? '' : '?';
+                const optional = requiredArr.includes(key) ? "" : "?";
                 propParts.push(`${key}${optional}: ${tsType}`);
               });
-              obj['tsType'] += ` & { ${propParts.join('; ')} }`;
+              obj["tsType"] += ` & { ${propParts.join("; ")} }`;
             }
-            delete obj['$ref'];
+            delete obj["$ref"];
           }
-        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        } else if (typeof obj[key] === "object" && obj[key] !== null) {
           // Recurse into child objects.
           rewriteRefs(obj[key]);
         }
@@ -366,10 +348,10 @@ export async function jsonSchemaToTsCode(jsonSchema: JSONSchema4, typeName: stri
   // Pass an all-caps fake type name to json-schema-to-typescript and replace
   // it back afterwards. This avoids the compiler's generateName logic appending
   // a numeric suffix when the same name appears in nested references.
-  const fakeTypeName = 'THISISAFAKETYPENAME';
+  const fakeTypeName = "THISISAFAKETYPENAME";
 
   const code = await compile(jsonSchema, fakeTypeName, {
-    bannerComment: '',
+    bannerComment: "",
     additionalProperties: false,
     declareExternallyReferenced: false,
   });
@@ -384,17 +366,17 @@ export function getRequestDataJsonSchema(interfaceInfo: Interface): JSONSchema4 
   switch (interfaceInfo.req_body_type) {
     case RequestBodyType.form:
       jsonSchema = propDefinitionsToJsonSchema(
-        interfaceInfo.req_body_form.map<PropDefinition>(item => ({
+        interfaceInfo.req_body_form.map<PropDefinition>((item) => ({
           name: item.name,
           required: item.required === Required.true,
-          type: (item.type === RequestFormItemType.file ? 'file' : 'string') as any,
+          type: (item.type === RequestFormItemType.file ? "file" : "string") as any,
           comment: item.desc,
           // Carry multi-file and enum markers from the OAS3 multipart schema
           // expansion so propDefinitionsToJsonSchema can emit `File[]` and
           // literal unions instead of collapsing every field to `string`.
-          ...(item.isArray ? {isArray: true} : {}),
-          ...(Array.isArray(item.enum) && item.enum.length ? {enum: item.enum} : {}),
-        }))
+          ...(item.isArray ? { isArray: true } : {}),
+          ...(Array.isArray(item.enum) && item.enum.length ? { enum: item.enum } : {}),
+        })),
       );
       break;
     case RequestBodyType.json:
@@ -416,7 +398,7 @@ export function getRequestDataJsonSchema(interfaceInfo: Interface): JSONSchema4 
   if (
     jsonSchema &&
     jsonSchema.type &&
-    jsonSchema.type !== 'object' &&
+    jsonSchema.type !== "object" &&
     !jsonSchema.properties &&
     !jsonSchema.$ref &&
     !jsonSchema.oneOf &&
@@ -429,12 +411,12 @@ export function getRequestDataJsonSchema(interfaceInfo: Interface): JSONSchema4 
 
   if (isArray(interfaceInfo.req_query) && interfaceInfo.req_query.length) {
     const queryJsonSchema = propDefinitionsToJsonSchema(
-      interfaceInfo.req_query.map<PropDefinition>(item => ({
+      interfaceInfo.req_query.map<PropDefinition>((item) => ({
         name: item.name,
         required: item.required === Required.true,
-        type: item.type || 'any', // `object` resolves to `{}`, which causes declaration issues, so strip it for now
+        type: item.type || "any", // `object` resolves to `{}`, which causes declaration issues, so strip it for now
         comment: item.desc,
-      }))
+      })),
     );
     /* istanbul ignore else */
     if (jsonSchema) {
@@ -453,12 +435,12 @@ export function getRequestDataJsonSchema(interfaceInfo: Interface): JSONSchema4 
 
   if (isArray(interfaceInfo.req_params) && interfaceInfo.req_params.length) {
     const paramsJsonSchema = propDefinitionsToJsonSchema(
-      interfaceInfo.req_params.map<PropDefinition>(item => ({
+      interfaceInfo.req_params.map<PropDefinition>((item) => ({
         name: item.name,
         required: true,
-        type: item.type || 'string',
+        type: item.type || "string",
         comment: item.desc,
-      }))
+      })),
     );
     /* istanbul ignore else */
     if (jsonSchema) {
@@ -488,7 +470,7 @@ export function getResponseDataJsonSchema(interfaceInfo: Interface): JSONSchema4
       }
       break;
     default:
-      jsonSchema = {__is_any__: true};
+      jsonSchema = { __is_any__: true };
       break;
   }
 
@@ -500,10 +482,11 @@ export function getResponseDataJsonSchema(interfaceInfo: Interface): JSONSchema4
  *
  * When the output file path is known, the consumer project's own prettier
  * config is resolved from it (resolveConfig walks up from the file location),
- * so generated code lands clean under the consumer's `prettier --check`. The
- * bundled defaults only apply when no consumer config exists. `filepath` is
- * always set so prettier infers the parser from the extension and applies any
- * matching `overrides` from the consumer config.
+ * so generated code lands clean under the consumer's `prettier --check`. When
+ * the consumer has no config, pure prettier defaults are used, mirroring what
+ * the consumer's own prettier would produce. `filepath` is always set so
+ * prettier infers the parser from the extension and applies any matching
+ * `overrides` from the consumer config.
  *
  * @param content code to format
  * @param filePath output file path used to resolve the consumer config
@@ -511,16 +494,13 @@ export function getResponseDataJsonSchema(interfaceInfo: Interface): JSONSchema4
  * @see https://prettier.io/docs/en/options.html
  */
 export async function formatContent(content: string, filePath?: string): Promise<string> {
-  const defaults = getPrettier();
   if (!filePath) {
+    // No path to resolve a config from: format with pure prettier defaults.
     // prettier 3 made `format` asynchronous; callers must await the result.
-    return prettierFormat(content, defaults);
+    return prettierFormat(content, { parser: "babel-ts" });
   }
   const consumerConfig = (await resolveConfig(filePath)) ?? {};
-  const config: PrettierOptions = {...defaults, ...consumerConfig, filepath: filePath};
-  // Explicit parser would win over `filepath` inference; drop it.
-  delete config.parser;
-  return prettierFormat(content, config);
+  return prettierFormat(content, { ...consumerConfig, filepath: filePath });
 }
 
 /**
